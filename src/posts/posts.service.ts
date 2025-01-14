@@ -16,11 +16,11 @@ export class PostsService {
 
   create(
     createPostsDto: CreatePostDto,
-    { email, id: userId }: UserDto,
+    user: UserDto,
   ) {
     const post = new Post({
       ...createPostsDto,
-      userId : userId,
+      user : user,
       createdAt : new Date(),
       updatedAt : new Date(),
     });

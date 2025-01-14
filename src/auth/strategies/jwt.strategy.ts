@@ -1,31 +1,37 @@
-// lib
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-// custom
+// Custom
 import { UsersService } from 'src/users/users.service';
 import { TokenPayload } from '../../common/interfaces/token-payload.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    configService: ConfigService,
+    private readonly configService: ConfigService,
     private readonly usersService: UsersService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: any) =>
-          request?.cookies?.Authentication ||
-          request?.Authentication ||
-          request?.headers.Authentication,
+          request?.headers?.authorization?.split(' ')[1] || // Bearer <token>
+          request?.cookies?.Authentication || 
+          request?.Authentication,
       ]),
-      secretOrKey: configService.get('JWT_SECRET'),
+      secretOrKey: configService.get<string>('JWT_SECRET'),
     });
   }
 
-  async validate({ userId }: TokenPayload) {
-    return this.usersService.getUser({ id: userId });
+  async validate(payload: TokenPayload) {
+    const user = await this.usersService.getUser({ id: payload.userId });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found or invalid token');
+    }
+
+    // Attach additional logic or checks if required
+    return user;
   }
 }
